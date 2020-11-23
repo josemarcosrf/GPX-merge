@@ -1,0 +1,2 @@
+coloredlogs==10.0
+rich==9.2.0
