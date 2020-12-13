@@ -7,16 +7,18 @@ from typing import Text
 from gpx_merge import configure_colored_logging
 from gpx_merge import console
 from gpx_merge.cli import get_args
-from gpx_merge.gpx_utils import compose_output_gpx
-from gpx_merge.gpx_utils import get_gpx_attributes
-from gpx_merge.gpx_utils import get_gpx_creator
-from gpx_merge.gpx_utils import get_track
-from gpx_merge.gpx_utils import get_track_extensions
-from gpx_merge.gpx_utils import get_track_name
-from gpx_merge.gpx_utils import get_trk_point_field
-from gpx_merge.gpx_utils import get_trk_points
-from gpx_merge.gpx_utils import read_gpx
-from gpx_merge.gpx_utils import write_gpx
+from gpx_merge.gpx import compose_output_gpx
+from gpx_merge.gpx import get_gpx_attributes
+from gpx_merge.gpx import get_gpx_creator
+from gpx_merge.gpx import get_track
+from gpx_merge.gpx import get_track_extensions
+from gpx_merge.gpx import get_track_name
+from gpx_merge.gpx import get_trk_point_field
+from gpx_merge.gpx import get_trk_points
+from gpx_merge.gpx import interpolate_zero_hr
+from gpx_merge.gpx import read_gpx
+from gpx_merge.gpx import write_gpx
+
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +74,15 @@ if __name__ == "__main__":
         all_track_points, key=lambda x: get_trk_point_field(x, field="time")
     )
 
-    # 2. compose the document
+    # 2. Interpolate zero heart rate measurements
+    if args.filter_zeros:
+        sorted_track_points = interpolate_zero_hr(sorted_track_points)
+
+    # 3. compose the document
     gpx_attributes["creator"] = "JMRF"
     doc = compose_output_gpx(
         gpx_attributes, track_name, all_extensions, sorted_track_points
     )
 
-    # 3. Write file
+    # 4. Write file
     write_gpx(args.output_file, doc)

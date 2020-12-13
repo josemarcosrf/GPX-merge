@@ -8,6 +8,8 @@ from typing import Text
 from xml.dom import minidom
 from xml.parsers.expat import ExpatError
 
+from gpx_merge.utils import interpolate_zeros
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,7 @@ TRACK_NAME_TAG = "name"
 TRACK_SEGMENT_TAG = "trkseg"
 TRACK_EXTENSIONS_TAG = "extensions"
 TRACKPOINT_TAG = "trkpt"
+TRACKPOINT_HEART_RATE_TAG = "gpxtpx:hr"
 METADATA_TAG = "metadata"
 
 UNKNOWN_TAG = "UNK"
@@ -131,6 +134,51 @@ def get_trk_point_field(trk_point: minidom.Element, field: Text) -> Any:
     except (ValueError, IndexError) as e:
         logger.error(f"Error getting track point field '{field}': {e}")
         return minidom.NodeList()
+
+
+def interpolate_zero_hr(track_points: List[minidom.Element]) -> List[minidom.Element]:
+    try:
+        types = {trk_point.nodeName for trk_point in track_points}
+        if any([t != TRACKPOINT_TAG for t in types]):
+
+            raise ValueError(
+                f"Received a list with invalid elements ({types}). "
+                f"Expected all to be of type: {TRACKPOINT_TAG}"
+            )
+
+        heart_rates = []
+        hr_indices = []
+        for i, trk_point in enumerate(track_points):
+            hr = trk_point.getElementsByTagName(TRACKPOINT_HEART_RATE_TAG)
+            if hr:
+                hr_indices.append(i)
+                heart_rates.append(int(hr[0].childNodes[0].nodeValue))
+
+        interpolated = interpolate_zeros(heart_rates, missing_value=0)
+
+        assert all([x != 0 for x in interpolated])
+
+        for index, new_hr in zip(hr_indices, interpolated):
+            hr = track_points[index].getElementsByTagName(TRACKPOINT_HEART_RATE_TAG)
+            hr[0].childNodes[0].nodeValue = str(new_hr)
+
+            assert new_hr != 0
+
+            assert (
+                int(
+                    get_trk_point_field(
+                        track_points[index], field=TRACKPOINT_HEART_RATE_TAG
+                    )
+                )
+                != 0
+            )
+
+        return track_points
+
+    except (ValueError, IndexError) as e:
+        logger.error(f"Error interpolating heart rates: {e}. Returning untouched list")
+
+    return track_points
 
 
 def compose_output_gpx(
