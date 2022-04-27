@@ -200,6 +200,10 @@ def interpolate_zero_hr(track_points: List[minidom.Element]) -> List[minidom.Ele
     return track_points
 
 
+def tcx_to_gpx(track_points):
+    pass
+
+
 def compose_output_gpx(
     gpx_attributes: Dict[Text, Text],
     track_name: Text,

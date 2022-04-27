@@ -42,13 +42,8 @@ if __name__ == "__main__":
     all_extensions = []
     all_track_points = []
     gpx_attributes = {}
-    for gpx_file in find_files(args.input_dir, extensions=["gpx", "tcx"]):
+    for gpx_file in find_files(args.input_dir, extensions=["gpx"]):
         console.print(f"Reading file: [magenta]{gpx_file}[/magenta]")
-
-        is_tcx = gpx_file.endswith(".tcx")
-        time_field = "Time" if is_tcx else "time"
-
-        console.print(f"Is TCX: [magenta]{is_tcx}[/magenta]")
 
         # GPX
         doc = read_gpx(gpx_file)
@@ -58,7 +53,7 @@ if __name__ == "__main__":
         logger.debug(f"GPX Attributes: {gpx_attributes}")
 
         # Track
-        track = get_track(doc, is_tcx=is_tcx)
+        track = get_track(doc)
         track_name = track_name or get_track_name(track)
         track_extensions = get_track_extensions(track)
 
@@ -68,12 +63,12 @@ if __name__ == "__main__":
         logger.debug(f"Track Extensions: {track_extensions.toprettyxml()}")
 
         # Track Points
-        track_points = get_track_points(track, is_tcx=is_tcx)
+        track_points = get_track_points(track)
         console.print(f"Found {len(track_points)} track points")
 
         # Times
         times = [
-            get_track_point_field(trkpt, field=time_field)
+            get_track_point_field(trkpt, field="time")
             for trkpt in track_points
         ]
         logger.debug(f"From: {times[0]} to {times[-1]}")
