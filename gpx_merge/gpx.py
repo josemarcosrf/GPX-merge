@@ -16,13 +16,20 @@ logger = logging.getLogger(__name__)
 
 GPX_TAG = "gpx"
 CREATOR_TAG = "creator"
-TRACK_TAG = "trk"
+GPX_TRACK_TAG = "trk"
 TRACK_NAME_TAG = "name"
 TRACK_SEGMENT_TAG = "trkseg"
 TRACK_EXTENSIONS_TAG = "extensions"
-TRACKPOINT_TAG = "trkpt"
+GPX_TRACKPOINT_TAG = "trkpt"
 TRACKPOINT_HEART_RATE_TAG = "gpxtpx:hr"
 METADATA_TAG = "metadata"
+
+TCX_TRACK_TAG = "Track"
+TCX_TRACKPOINT_TAG = "Trackpoint"
+TCX_TRACKPOINT_TIME = "Time"
+TCX_TRACKPOINT_ALT = "AltitudeMeters"
+TCX_TRACKPOINT_DIST = "DistanceMeters"
+TCX_TRACKPOINT_HR = "HeartRateBpm"
 
 UNKNOWN_TAG = "UNK"
 
@@ -77,19 +84,22 @@ def get_gpx_creator(xml_doc: minidom.Document) -> Text:
     return get_gpx_attributes(xml_doc).get(CREATOR_TAG, UNKNOWN_TAG)
 
 
-def get_track(xml_doc: minidom.Document) -> minidom.Element:
+def get_track(xml_doc: minidom.Document, is_tcx:bool = False) -> minidom.Element:
     try:
-        return xml_doc.getElementsByTagName(TRACK_TAG)[0]
+        if is_tcx:
+            return xml_doc.getElementsByTagName(TCX_TRACK_TAG)[0]
+
+        return xml_doc.getElementsByTagName(GPX_TRACK_TAG)[0]
     except IndexError:
-        minidom.Element(TRACK_TAG)
+        minidom.Element(GPX_TRACK_TAG)
 
 
 def get_track_name(xml_track: minidom.Element) -> Text:
     try:
-        if xml_track.nodeName != TRACK_TAG:
+        if xml_track.nodeName != GPX_TRACK_TAG:
             raise ValueError(
                 f"Received element of type: {xml_track.nodeName}. "
-                f"Expected a {TRACK_TAG}"
+                f"Expected a {GPX_TRACK_TAG}"
             )
         return _get_elem_field(xml_track, TRACK_NAME_TAG)
     except (ValueError, IndexError) as e:
@@ -99,10 +109,10 @@ def get_track_name(xml_track: minidom.Element) -> Text:
 
 def get_track_extensions(xml_track: minidom.Element) -> minidom.Element:
     try:
-        if xml_track.nodeName != TRACK_TAG:
+        if xml_track.nodeName != GPX_TRACK_TAG:
             raise ValueError(
                 f"Received element of type: {xml_track.nodeName}. "
-                f"Expected a {TRACK_TAG}"
+                f"Expected a {GPX_TRACK_TAG}"
             )
         return xml_track.getElementsByTagName(TRACK_EXTENSIONS_TAG)[0]
     except (ValueError, IndexError) as e:
@@ -110,25 +120,34 @@ def get_track_extensions(xml_track: minidom.Element) -> minidom.Element:
         return minidom.Element(TRACK_EXTENSIONS_TAG)
 
 
-def get_trk_points(xml_track: minidom.Document) -> minidom.NodeList:
+def get_track_points(xml_track: minidom.Document, is_tcx:bool = False) -> minidom.NodeList:
     try:
-        if xml_track.nodeName != TRACK_TAG:
+        if is_tcx:
+            if xml_track.nodeName != TCX_TRACK_TAG:
+                raise ValueError(
+                    f"Received element of type: '{xml_track.nodeName}'. "
+                    f"Expected a '{TCX_TRACK_TAG}'"
+                )
+            return xml_track.getElementsByTagName(TCX_TRACKPOINT_TAG)
+
+        if xml_track.nodeName != GPX_TRACK_TAG:
             raise ValueError(
-                f"Received element of type: {xml_track.nodeName}. "
-                f"Expected a {TRACK_TAG}"
+                f"Received element of type: '{xml_track.nodeName}'. "
+                f"Expected a '{GPX_TRACK_TAG}'"
             )
-        return xml_track.getElementsByTagName(TRACKPOINT_TAG)
+        return xml_track.getElementsByTagName(GPX_TRACKPOINT_TAG)
     except ValueError as e:
         logger.error(f"Error getting track points: {e}")
         return minidom.NodeList()
 
 
-def get_trk_point_field(trk_point: minidom.Element, field: Text) -> Any:
+def get_track_point_field(trk_point: minidom.Element, field: Text) -> Any:
     try:
-        if trk_point.nodeName != TRACKPOINT_TAG:
+        valid_nodes = [GPX_TRACKPOINT_TAG, TCX_TRACKPOINT_TAG]
+        if trk_point.nodeName not in valid_nodes:
             raise ValueError(
                 f"Received element of type: {trk_point.nodeName}. "
-                f"Expected a {TRACKPOINT_TAG}"
+                f"Expected one of {valid_nodes}"
             )
         return trk_point.getElementsByTagName(field)[0].childNodes[0].nodeValue
     except (ValueError, IndexError) as e:
@@ -139,11 +158,11 @@ def get_trk_point_field(trk_point: minidom.Element, field: Text) -> Any:
 def interpolate_zero_hr(track_points: List[minidom.Element]) -> List[minidom.Element]:
     try:
         types = {trk_point.nodeName for trk_point in track_points}
-        if any([t != TRACKPOINT_TAG for t in types]):
+        if any([t != GPX_TRACKPOINT_TAG for t in types]):
 
             raise ValueError(
                 f"Received a list with invalid elements ({types}). "
-                f"Expected all to be of type: {TRACKPOINT_TAG}"
+                f"Expected all to be of type: {GPX_TRACKPOINT_TAG}"
             )
 
         heart_rates = []
@@ -166,7 +185,7 @@ def interpolate_zero_hr(track_points: List[minidom.Element]) -> List[minidom.Ele
 
             assert (
                 int(
-                    get_trk_point_field(
+                    get_track_point_field(
                         track_points[index], field=TRACKPOINT_HEART_RATE_TAG
                     )
                 )
@@ -197,7 +216,7 @@ def compose_output_gpx(
     # TODO: Add metadata to the GPX object
 
     # Create a Track
-    track = doc.createElement(TRACK_TAG)
+    track = doc.createElement(GPX_TRACK_TAG)
     track.setAttribute(TRACK_NAME_TAG, track_name)
 
     # Create track extensions and add to the Track
