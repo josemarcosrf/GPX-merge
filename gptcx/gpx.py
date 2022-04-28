@@ -1,5 +1,7 @@
 import logging
 import re
+import gpxpy
+
 from tempfile import NamedTemporaryFile
 from typing import Any
 from typing import Dict
@@ -8,10 +10,42 @@ from typing import Text
 from xml.dom import minidom
 from xml.parsers.expat import ExpatError
 
-from gpx_merge.utils import interpolate_zeros
+from gptcx.utils import interpolate_zeros
 
 
 logger = logging.getLogger(__name__)
+
+
+class GPX:
+    def __init__(self, gpx: gpxpy.gpx.GPX) -> None:
+        self.gpx = gpx
+
+    @classmethod
+    def from_file(cls, gpx_path: str):
+        try:
+            with open(gpx_path, "r") as f:
+                return cls(gpxpy.parse(gpx_path))
+        except Exception as e:
+            logger.error(f"Error reading gpx file: {e}")
+            raise e
+
+    def _extract_track_points(self):
+        points = []
+        for track in self.gpx.tracks:
+            for segment in track.segments:
+                for point in segment.points:
+                    points.append(
+                        ({point.latitude}, {point.longitude}),
+                        point.elevation,
+                        point.time,
+                        None,  # TODO: Heart Rate data
+                    )
+
+    def to_file(self, output_path: str):
+        """Write GPX object to file (XML format)."""
+        logger.info(f"Writting GPX to: {output_path}")
+        with open(output_path, "w", encoding="utf8") as f:
+            f.write(self.gpx.to_xml())
 
 
 GPX_TAG = "gpx"
@@ -84,7 +118,7 @@ def get_gpx_creator(xml_doc: minidom.Document) -> Text:
     return get_gpx_attributes(xml_doc).get(CREATOR_TAG, UNKNOWN_TAG)
 
 
-def get_track(xml_doc: minidom.Document, is_tcx:bool = False) -> minidom.Element:
+def get_track(xml_doc: minidom.Document, is_tcx: bool = False) -> minidom.Element:
     try:
         if is_tcx:
             return xml_doc.getElementsByTagName(TCX_TRACK_TAG)[0]
@@ -120,7 +154,9 @@ def get_track_extensions(xml_track: minidom.Element) -> minidom.Element:
         return minidom.Element(TRACK_EXTENSIONS_TAG)
 
 
-def get_track_points(xml_track: minidom.Document, is_tcx:bool = False) -> minidom.NodeList:
+def get_track_points(
+    xml_track: minidom.Document, is_tcx: bool = False
+) -> minidom.NodeList:
     try:
         if is_tcx:
             if xml_track.nodeName != TCX_TRACK_TAG:
@@ -198,10 +234,6 @@ def interpolate_zero_hr(track_points: List[minidom.Element]) -> List[minidom.Ele
         logger.error(f"Error interpolating heart rates: {e}. Returning untouched list")
 
     return track_points
-
-
-def tcx_to_gpx(track_points):
-    pass
 
 
 def compose_output_gpx(

@@ -36,10 +36,10 @@ install:
 	pip list
 
 clean:
-	find . -name 'README.md.*' -exec rm -f  {} +
-	find . -name '*.pyc' -exec rm -f {} +
-	find . -name '*.pyo' -exec rm -f {} +
-	find . -name '*~' -exec rm -f  {} +
+	find . -not \( -path .venv -prune \) -name 'README.md.*' -exec rm -f  {} +
+	find . -not \( -path .venv -prune \) -name '*.pyc' -exec rm -f {} +
+	find . -not \( -path .venv -prune \) -name '*.pyo' -exec rm -f {} +
+	find . -not \( -path .venv -prune \) -name '*~' -exec rm -f  {} +
 	rm -rf build/
 	rm -rf .pytype/
 	rm -rf dist/
@@ -48,18 +48,18 @@ clean:
 	# rm -rf pip-wheel-metadata
 
 formatter:
-	black gen_demo --exclude tests/
+	black gptcx --exclude tests/
 
 lint:
-	flake8 my_pacakge tests --exclude tests/
-	black --check my_pacakge tests --exclude tests/
+	flake8 gptcx tests --exclude tests/
+	black --check gptcx tests --exclude tests/
 
 types:
 	# https://google.github.io/pytype/
-	pytype --keep-going my_pacakge --exclude gen_demo/tests
+	pytype --keep-going gptcx --exclude gptcx/tests
 
 pyupgrade:
-	find .  -name '*.py' | grep -v 'proto\|eggs\|docs' | xargs pyupgrade --py36-plus
+	find gptcx  -name '*.py' | grep -v 'proto\|eggs\|docs' | xargs pyupgrade --py36-plus
 
 readme-toc:
 	# https://github.com/ekalinin/github-markdown-toc
@@ -75,17 +75,8 @@ build-docker:
 	# make build-docker version=0.1
 	./scripts/build_docker.sh $(version)
 
-upload-package: clean
-	python setup.py sdist
-	twine upload dist/* -r melior
-
 tag:
-	git tag $$( python -c 'import gen_demo; print(gen_demo.__version__)' )
+	git tag $$( python -c 'import gptcx; print(gptcx.__version__)' )
 	git push --tags
 
-setup-dvc:
-	# Configure https://mai-dvc.ams3.digitaloceanspaces.com as remote storage
-	dvc init
-	dvc remote add -d $(remote) s3://mai-dvc/$(remote)
-	dvc remote modify $(remote) endpointurl https://ams3.digitaloceanspaces.com
 

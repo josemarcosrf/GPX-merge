@@ -4,7 +4,7 @@ import os
 from rich.console import Console
 from rich.traceback import install
 
-from gpx_merge import version
+from gptcx import version
 
 __version__ = version.__version__
 
@@ -14,11 +14,11 @@ def configure_colored_logging(
     level=logging.INFO,
     fmt="%(levelname)-8s %(name)-25s:%(lineno)4d - %(message)-50s",
 ):
-    """ Configures the given logger; format, logging level, style, etc """
+    """Configures the given logger; format, logging level, style, etc"""
     import coloredlogs
 
     def add_notice_log_level():
-        """ Creates a new 'notice' logging level """
+        """Creates a new 'notice' logging level"""
         # inspired by:
         # https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility
         NOTICE_LEVEL_NUM = 25
