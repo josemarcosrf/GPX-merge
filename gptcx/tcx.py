@@ -6,6 +6,7 @@ from typing import List
 import coloredlogs
 import dateutil.parser
 import gpxpy
+import pytz
 from tcxparser import TCXParser
 
 from gptcx import Point
@@ -26,7 +27,7 @@ class TCX:
         Read a TCX file.
         """
         try:
-            logger.info(f"Reading tcx: {tcx_path}")
+            logger.debug(f"Reading tcx: {tcx_path}")
             return cls(TCXParser(tcx_path))
 
         except Exception as e:
@@ -40,12 +41,16 @@ class TCX:
     def _extract_track_points(self) -> List[Point]:
         """Extract and combine features from tcx"""
         try:
+            time_values = [
+                datetime.strptime(t, "%Y-%m-%dT%H:%M:%S.000Z").replace(tzinfo=pytz.UTC)
+                for t in self.tcx.time_values()
+            ]
             return [
                 Point(pos, alt, t, hr)
                 for pos, alt, t, hr in zip_longest(
                     self.tcx.position_values(),
                     self.tcx.altitude_points(),
-                    self.tcx.time_values(),
+                    time_values,
                     self.tcx.hr_values(),
                 )
             ]
@@ -53,10 +58,11 @@ class TCX:
             logger.error(f"Error extracting TCX track points: {e}")
 
     def to_gpx(self, gpx_name: str = "", description: str = "") -> GPX:
-        """
-        Create GPX object.
-        """
-        logger.info(f"Creating GPX from TCX")
+        """Create GPX object."""
+
+        # TODO: Add gpx extensions so we can add heart rate data
+
+        logger.debug(f"Creating GPX from TCX")
         _gpx = gpxpy.gpx.GPX()
         _gpx.name = gpx_name
         _gpx.description = description
@@ -73,14 +79,13 @@ class TCX:
         gpx_track.segments.append(gpx_segment)
 
         for pos, alt, t, hr in self._extract_track_points():
-            tp_time = datetime.strptime(t, "%Y-%m-%dT%H:%M:%S.000Z")
             lat = pos[0] if pos else None
             lon = pos[1] if pos else None
             gpx_trackpoint = gpxpy.gpx.GPXTrackPoint(
                 latitude=lat,
                 longitude=lon,
                 elevation=alt,
-                time=tp_time,
+                time=t,
             )
             gpx_segment.points.append(gpx_trackpoint)
 

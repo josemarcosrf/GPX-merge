@@ -2,16 +2,24 @@
 
 This a small python utility to merge `GPX` and `TCX` files.
 
+
 <!--ts-->
    * [GPX Merge](#gpx-merge)
+      * [Limitations](#limitations)
       * [Install](#install)
       * [Run](#run)
          * [Merging all gpx and tcx files in a directory](#merging-all-gpx-and-tcx-files-in-a-directory)
          * [Converting tcx to gpx](#converting-tcx-to-gpx)
 
-<!-- Added by: jose, at: jue 28 abr 2022 13:20:23 CEST -->
+<!-- Added by: jose, at: jue 28 abr 2022 15:43:53 CEST -->
 
 <!--te-->
+
+## Limitations
+
+> ⚠️ Current `gpx` lib doesn't support missing `longitude` and `latitude`
+>
+> ⚠️ Current `gpx` lib doesn't support `heart rate` data
 
 ## Install
 

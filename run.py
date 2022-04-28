@@ -6,7 +6,7 @@ from typing import Text
 
 from gptcx import configure_colored_logging
 from gptcx.cli import get_args
-from gptcx.merge import merge
+from gptcx.merge import xml_merge
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def main():
     # gather
     gptcx_files = find_files(args.input_dir, extensions=["gpx", "tcx"])
     # merge
-    merge(gptcx_files, args.output_file, args.filter_zeros)
+    xml_merge(gptcx_files, args.output_file, args.filter_zeros)
 
 
 if __name__ == "__main__":

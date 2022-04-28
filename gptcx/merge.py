@@ -1,7 +1,10 @@
 import logging
 from typing import List
 
+import pytz
+
 from gptcx import console
+from gptcx import Point
 from gptcx.gpx import compose_output_gpx
 from gptcx.gpx import get_gpx_attributes
 from gptcx.gpx import get_gpx_creator
@@ -15,12 +18,20 @@ from gptcx.gpx import interpolate_zero_hr
 from gptcx.gpx import read_gpx
 from gptcx.gpx import write_gpx
 from gptcx.tcx import TCX
+from gptcx.utils import read_xml
 
 
 logger = logging.getLogger(__name__)
 
 
 def merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = False):
+    """Merges GPX and TCX files
+
+    Args:
+        gptcx_files (List[str]): _description_
+        output_file (str): _description_
+        filter_zeros (bool, optional): _description_. Defaults to False.
+    """
     # # TODO
     # gpx_attributes = {}
     # all_extensions = []
@@ -53,35 +64,44 @@ def merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = False):
 
         # Track Points
         track_points = gpx.track_points
-        console.print(f"Found {len(track_points)} track points")
-        console.print(f"From: {track_points[0].time} to {track_points[-1].time}")
-
-        logger.debug(type(track_points[0].time))
+        logger.debug(f"Found {len(track_points)} track points")
+        logger.debug(f"From: {track_points[0].time} to {track_points[-1].time}")
 
         # Store all the track points and their times
         all_track_points.extend(track_points)
 
     # Posprocessing
+    # 1. sort all points based on its time
+    sorted_track_points = sorted(all_track_points, key=lambda x: x.time)
 
-    # # TODO
-    # # 1. sort all points based on its time
-    # sorted_track_points = sorted(all_track_points, key=lambda x: x.time)
-
-    # # TODO: 2. Interpolate zero heart rate measurements
+    # TODO
+    # # 2. Interpolate zero heart rate measurements
     # if filter_zeros:
     #     sorted_track_points = interpolate_zero_hr(sorted_track_points)
 
-    # # TODO: 3. compose the document
+    # 3. compose the document
+
+    # # TODO:
     # gpx_attributes["creator"] = "JMRF"
     # doc = compose_output_gpx(
     #     gpx_attributes, track_name, all_extensions, sorted_track_points
     # )
 
+    merged = GPX.from_track_points(sorted_track_points)
+    console.print(f"[AFTER] Total {len(merged.track_points)} track points")
+
     # 4. Write file
-    gpx.to_file(output_file)
+    merged.to_file(output_file)
 
 
-def old_merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = False):
+def xml_merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = False):
+    """Merges GPX and TCX files by manipulating its XML structure directly
+
+    Args:
+        gptcx_files (List[str]): _description_
+        output_file (str): _description_
+        filter_zeros (bool, optional): _description_. Defaults to False.
+    """
     track_name = ""
     all_extensions = []
     all_track_points = []
@@ -89,8 +109,12 @@ def old_merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = Fal
     for gptcx_file in gptcx_files:
         console.print(f"Reading file: [magenta]{gptcx_file}[/magenta]")
 
+        if gptcx_file.endswith(".gpx"):
+            doc = read_gpx(gptcx_file)
+        elif gptcx_file.endswith(".tcx"):
+            doc = read_xml(gptcx_file)
+
         # GPX
-        doc = read_gpx(gptcx_file)
         creator = get_gpx_creator(doc)
         gpx_attributes.update(get_gpx_attributes(doc))
         console.print(f"Creator: [magenta]{creator}[/magenta]")
@@ -99,12 +123,15 @@ def old_merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = Fal
         # Track
         track = get_track(doc)
         track_name = track_name or get_track_name(track)
-        track_extensions = get_track_extensions(track)
-
-        all_extensions.append(track_extensions)
-
         console.print(f"Track Name: [magenta]{track_name}[/magenta]")
-        logger.debug(f"Track Extensions: {track_extensions.toprettyxml()}")
+
+        # Track extensions
+        try:
+            track_extensions = get_track_extensions(track)
+            logger.debug(f"Track Extensions: {track_extensions.toprettyxml()}")
+            all_extensions.append(track_extensions)
+        except AttributeError:
+            pass
 
         # Track Points
         track_points = get_track_points(track)

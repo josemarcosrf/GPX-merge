@@ -1,17 +1,20 @@
 import logging
 import re
 from tempfile import NamedTemporaryFile
+from time import time
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Text
+from typing import Union
 from xml.dom import minidom
 from xml.parsers.expat import ExpatError
 
 import gpxpy
+import pytz
 
-from gptcx import interpolate_zeros
 from gptcx import Point
+from gptcx.utils import interpolate_zeros
 
 
 logger = logging.getLogger(__name__)
@@ -24,11 +27,41 @@ class GPX:
     @classmethod
     def from_file(cls, gpx_path: str):
         try:
+            logger.debug(f"Reading gpx: {gpx_path}")
             with open(gpx_path, "r") as f:
                 return cls(gpxpy.parse(f))
         except Exception as e:
             logger.error(f"Error reading gpx file: {e}")
             raise e
+
+    @classmethod
+    def from_track_points(cls, points: List[Union[Point, gpxpy.gpx.GPXTrackPoint]]):
+        gpx = gpxpy.gpx.GPX()
+
+        # Create single track in the new GPX
+        gpx_track = gpxpy.gpx.GPXTrack()
+        gpx.tracks.append(gpx_track)
+
+        # Create a single segment in our GPX track
+        gpx_segment = gpxpy.gpx.GPXTrackSegment()
+        gpx_track.segments.append(gpx_segment)
+
+        # Add all track points
+        for p in points:
+            if isinstance(p, Point):
+                # TODO: Allow for HR data
+                gpx_segment.points.append(
+                    gpxpy.gpx.GPXTrackPoint(
+                        latitude=p.pos[0],
+                        longitude=p.pos[1],
+                        elevation=p.ele,
+                        time=p.time,
+                    )
+                )
+            elif isinstance(p, gpxpy.gpx.GPXTrackPoint):
+                gpx_segment.points.append(p)
+
+        return cls(gpx)
 
     @property
     def creator(self):
@@ -47,11 +80,16 @@ class GPX:
         for track in self.gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
+                    try:
+                        point_time = point.time.replace(tzinfo=pytz.UTC)
+                    except AttributeError:
+                        point_time = point.time
+
                     points.append(
                         Point(
-                            ({point.latitude}, {point.longitude}),
+                            (point.latitude, point.longitude),
                             point.elevation,
-                            point.time,
+                            point_time,
                             None,  # TODO: Heart Rate data
                         )
                     )
@@ -63,6 +101,9 @@ class GPX:
         logger.info(f"Writting GPX to: {output_path}")
         with open(output_path, "w", encoding="utf8") as f:
             f.write(self.gpx.to_xml())
+
+    def to_xml(self):
+        return self.gpx.to_xml()
 
 
 GPX_TAG = "gpx"
