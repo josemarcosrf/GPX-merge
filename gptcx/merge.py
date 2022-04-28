@@ -1,10 +1,7 @@
 import logging
 from typing import List
 
-import pytz
-
 from gptcx import console
-from gptcx import Point
 from gptcx.gpx import compose_output_gpx
 from gptcx.gpx import get_gpx_attributes
 from gptcx.gpx import get_gpx_creator
@@ -145,7 +142,6 @@ def xml_merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = Fal
         all_track_points.extend(zip(track_points, times))
 
     # Posprocessing
-
     # 1. sort all points based on its time
     sorted_track_points = [tp[0] for tp in sorted(all_track_points, key=lambda x: x[1])]
 
