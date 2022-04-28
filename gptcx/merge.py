@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from gptcx import console
 from gptcx.gpx import compose_output_gpx
@@ -9,14 +10,75 @@ from gptcx.gpx import get_track_extensions
 from gptcx.gpx import get_track_name
 from gptcx.gpx import get_track_point_field
 from gptcx.gpx import get_track_points
+from gptcx.gpx import GPX
 from gptcx.gpx import interpolate_zero_hr
 from gptcx.gpx import read_gpx
 from gptcx.gpx import write_gpx
-
-from typing import List
+from gptcx.tcx import TCX
 
 
 logger = logging.getLogger(__name__)
+
+
+def merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = False):
+    # # TODO
+    # gpx_attributes = {}
+    # all_extensions = []
+    all_track_points = []
+
+    for gptcx_file in gptcx_files:
+        console.print(f"Reading file: [magenta]{gptcx_file}[/magenta]")
+
+        if gptcx_file.endswith(".gpx"):
+            gpx = GPX.from_file(gptcx_file)
+        elif gptcx_file.endswith(".tcx"):
+            gpx = GPX(TCX.from_file(gptcx_file).to_gpx())
+
+        # GPX
+        console.print(f"Creator: [magenta]{gpx.creator}[/magenta]")
+
+        # # TODO
+        # gpx_attributes.update(get_gpx_attributes(doc))
+        # logger.debug(f"GPX Attributes: {gpx_attributes}")
+
+        # Tracks
+        track_points = []
+        for track in gpx.tracks:
+            console.print(f"Track Name: [magenta]{track.name}[/magenta]")
+
+            # # TODO
+            # track_extensions = get_track_extensions(track)
+            # all_extensions.append(track_extensions)
+            # logger.debug(f"Track Extensions: {track_extensions.toprettyxml()}")
+
+        # Track Points
+        track_points = gpx.track_points
+        console.print(f"Found {len(track_points)} track points")
+        console.print(f"From: {track_points[0].time} to {track_points[-1].time}")
+
+        logger.debug(type(track_points[0].time))
+
+        # Store all the track points and their times
+        all_track_points.extend(track_points)
+
+    # Posprocessing
+
+    # # TODO
+    # # 1. sort all points based on its time
+    # sorted_track_points = sorted(all_track_points, key=lambda x: x.time)
+
+    # # TODO: 2. Interpolate zero heart rate measurements
+    # if filter_zeros:
+    #     sorted_track_points = interpolate_zero_hr(sorted_track_points)
+
+    # # TODO: 3. compose the document
+    # gpx_attributes["creator"] = "JMRF"
+    # doc = compose_output_gpx(
+    #     gpx_attributes, track_name, all_extensions, sorted_track_points
+    # )
+
+    # 4. Write file
+    gpx.to_file(output_file)
 
 
 def old_merge(gptcx_files: List[str], output_file: str, filter_zeros: bool = False):

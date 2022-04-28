@@ -1,12 +1,12 @@
 import glob
 import logging
 import os
-from typing import List, Text
+from typing import List
+from typing import Text
 
 from gptcx import configure_colored_logging
-from gptcx.merge import old_merge
 from gptcx.cli import get_args
-
+from gptcx.merge import merge
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def main():
     # gather
     gptcx_files = find_files(args.input_dir, extensions=["gpx", "tcx"])
     # merge
-    old_merge(gptcx_files, args.output_file, args.filter_zeros)
+    merge(gptcx_files, args.output_file, args.filter_zeros)
 
 
 if __name__ == "__main__":

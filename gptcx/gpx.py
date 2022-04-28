@@ -1,7 +1,5 @@
 import logging
 import re
-import gpxpy
-
 from tempfile import NamedTemporaryFile
 from typing import Any
 from typing import Dict
@@ -10,7 +8,10 @@ from typing import Text
 from xml.dom import minidom
 from xml.parsers.expat import ExpatError
 
-from gptcx.utils import interpolate_zeros
+import gpxpy
+
+from gptcx import interpolate_zeros
+from gptcx import Point
 
 
 logger = logging.getLogger(__name__)
@@ -24,22 +25,38 @@ class GPX:
     def from_file(cls, gpx_path: str):
         try:
             with open(gpx_path, "r") as f:
-                return cls(gpxpy.parse(gpx_path))
+                return cls(gpxpy.parse(f))
         except Exception as e:
             logger.error(f"Error reading gpx file: {e}")
             raise e
 
-    def _extract_track_points(self):
+    @property
+    def creator(self):
+        return self.gpx.creator
+
+    @property
+    def tracks(self):
+        return self.gpx.tracks
+
+    @property
+    def track_points(self):
+        return self._extract_track_points()
+
+    def _extract_track_points(self) -> List[Point]:
         points = []
         for track in self.gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
                     points.append(
-                        ({point.latitude}, {point.longitude}),
-                        point.elevation,
-                        point.time,
-                        None,  # TODO: Heart Rate data
+                        Point(
+                            ({point.latitude}, {point.longitude}),
+                            point.elevation,
+                            point.time,
+                            None,  # TODO: Heart Rate data
+                        )
                     )
+
+        return points
 
     def to_file(self, output_path: str):
         """Write GPX object to file (XML format)."""

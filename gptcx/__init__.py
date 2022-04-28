@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import namedtuple
 
 from rich.console import Console
 from rich.traceback import install
@@ -7,6 +8,9 @@ from rich.traceback import install
 from gptcx import version
 
 __version__ = version.__version__
+
+
+Point = namedtuple("Point", ["pos", "ele", "time", "hr"])
 
 
 def configure_colored_logging(

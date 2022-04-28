@@ -1,11 +1,15 @@
-import coloredlogs
-import dateutil.parser
 import logging
-import gpxpy
-
 from datetime import datetime
 from itertools import zip_longest
+from typing import List
+
+import coloredlogs
+import dateutil.parser
+import gpxpy
 from tcxparser import TCXParser
+
+from gptcx import Point
+from gptcx.gpx import GPX
 
 
 logger = logging.getLogger(__name__)
@@ -29,21 +33,26 @@ class TCX:
             logger.error(f"Error reading tcx file: {e}")
             raise e
 
-    def _extract_track_points(self):
-        """
-        Extract and combine features from tcx
-        """
+    @property
+    def track_points(self):
+        return self._extract_track_points()
+
+    def _extract_track_points(self) -> List[Point]:
+        """Extract and combine features from tcx"""
         try:
-            return zip_longest(
-                self.tcx.position_values(),
-                self.tcx.altitude_points(),
-                self.tcx.time_values(),
-                self.tcx.hr_values(),
-            )
+            return [
+                Point(pos, alt, t, hr)
+                for pos, alt, t, hr in zip_longest(
+                    self.tcx.position_values(),
+                    self.tcx.altitude_points(),
+                    self.tcx.time_values(),
+                    self.tcx.hr_values(),
+                )
+            ]
         except Exception as e:
             logger.error(f"Error extracting TCX track points: {e}")
 
-    def to_gpx(self, gpx_name: str = "", description: str = ""):
+    def to_gpx(self, gpx_name: str = "", description: str = "") -> GPX:
         """
         Create GPX object.
         """
@@ -52,9 +61,9 @@ class TCX:
         _gpx.name = gpx_name
         _gpx.description = description
 
-        start_time = dateutil.parser.parse(self.tcx.started_at).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        # start_time = dateutil.parser.parse(self.tcx.started_at).strftime(
+        #     "%Y-%m-%d %H:%M:%S"
+        # )
         gpx_track = gpxpy.gpx.GPXTrack(name=gpx_name, description=description)
         gpx_track.type = self.tcx.activity_type
 
